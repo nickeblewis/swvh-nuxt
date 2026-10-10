@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="robots" content="noindex">
+    <title>Forms</title>
+  </head>
+  <body>
+    <!--
+      Static skeleton for Netlify Forms. Netlify registers forms by parsing built
+      HTML at deploy time, and the contact page is server-rendered, so it never
+      sees the real form. This copy is what gets registered, and it is also the
+      URL the contact page POSTs to.
+
+      Field names must match app/pages/contact.vue exactly: Netlify rejects
+      fields it didn't see here.
+    -->
+    <form name="contact" method="POST" data-netlify="true" netlify-honeypot="website" hidden>
+      <input type="hidden" name="form-name" value="contact">
+      <input type="text" name="name">
+      <input type="email" name="email">
+      <input type="text" name="subject">
+      <textarea name="message"></textarea>
+      <input type="text" name="website">
+    </form>
+  </body>
+</html>

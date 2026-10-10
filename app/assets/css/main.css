@@ -1,0 +1,38 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* Dark mode follows a `.dark` class on <html>, set before first paint by the
+   script in app.vue and flipped by the Theme button. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Home page "Groups include" links render as tags, and the two calls to action
+   beneath them as solid lozenges. Written as plain classes rather than
+   utilities so they win over the surrounding `.prose` link styles. */
+.home-chip {
+  @apply mr-2 mb-2 inline-block rounded-full border border-teal-700/30 bg-teal-700/10 px-3 py-1 text-sm font-medium text-teal-800 no-underline transition-colors hover:bg-teal-700/20 dark:border-teal-300/40 dark:bg-teal-300/10 dark:text-teal-200 dark:hover:bg-teal-300/20;
+}
+.home-pill {
+  @apply mt-2 mr-2 mb-2 inline-block rounded-full border border-teal-700 bg-teal-700 px-5 py-2.5 text-sm font-bold text-white no-underline transition-colors hover:bg-teal-800 dark:border-teal-300 dark:bg-teal-300 dark:text-teal-950 dark:hover:bg-teal-200;
+}
+.home-pill::after {
+  content: " →";
+}
+
+/* Code highlighting is handled by Shiki at build/render time (see
+   `content.build.markdown.highlight` and `mdc.highlight` in nuxt.config.ts),
+   which emits inline colours for the default theme and CSS variables for the
+   dark theme. This rule is what makes the dark variant take effect. */
+.dark .shiki,
+.dark .shiki span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+  font-style: var(--shiki-dark-font-style) !important;
+  font-weight: var(--shiki-dark-font-weight) !important;
+  text-decoration: var(--shiki-dark-text-decoration) !important;
+}
+
+/* Tailwind Typography renders `pre` with its own background; Shiki supplies one too.
+   Let Shiki win so articles and database bodies match. */
+.prose pre.shiki {
+  background-color: var(--shiki-bg, transparent);
+}

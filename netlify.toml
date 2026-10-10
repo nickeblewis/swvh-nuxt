@@ -1,0 +1,9 @@
+[build]
+  command = "npm run build"
+  # Nitro's `netlify` preset writes the static assets here and the server
+  # function to .netlify/functions-internal. Both are auto-detected.
+  publish = "dist"
+
+[build.environment]
+  # Netlify Database needs 20.12.2+, and Nuxt Content fails to build on Node 18.
+  NODE_VERSION = "22"

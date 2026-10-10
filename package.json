@@ -1,0 +1,41 @@
+{
+  "name": "swvh_nuxt",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "db:generate": "drizzle-kit generate",
+    "admin:create": "tsx scripts/create-admin.ts",
+    "typecheck": "nuxt typecheck",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@adonisjs/hash": "^10.1.1",
+    "@date-fns/tz": "^1.5.0",
+    "@neondatabase/serverless": "^1.2.0",
+    "@netlify/database": "^2.0.1",
+    "@netlify/nuxt": "^1.0.1",
+    "@nuxt/content": "^3.16.1",
+    "@nuxtjs/mdc": "^0.23.2",
+    "drizzle-orm": "^1.0.0-rc.4",
+    "nuxt": "^4.6.0",
+    "nuxt-auth-utils": "^0.5.31",
+    "vue": "^3.5.43",
+    "vue-router": "^5.3.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.20",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^22.20.5",
+    "drizzle-kit": "^1.0.0-rc.4",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
+    "vitest": "^5.0.3",
+    "vue-tsc": "^3.3.12"
+  }
+}

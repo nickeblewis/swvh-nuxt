@@ -93,18 +93,28 @@ database behind it, and every page that lists activities will fail.
 Admin users are never seeded. Create one (or reset a password) with the script;
 it asks for the password, which must be at least 12 characters.
 
-```bash
-netlify dev:exec -- npx tsx scripts/create-admin.ts you@example.com
-```
-
-If that reports `NETLIFY_DB_URL environment variable is not set` (it does when
-the folder isn't linked to a Netlify site), pass the local database yourself:
+**In development**, the local database only runs while `netlify dev` is
+running, so use two terminals:
 
 ```bash
-netlify database status --show-credentials   # copy the connection string
-NETLIFY_DB_DRIVER=server NETLIFY_DB_URL='<connection string>' \
-  npx tsx scripts/create-admin.ts you@example.com
+netlify dev                                # terminal 1, leave running
+npm run admin:create you@example.com       # terminal 2
 ```
+
+The script picks up the local connection string that `netlify dev` records in
+`.netlify/state.json`. If it reports `No database found`, `netlify dev` isn't
+running.
+
+**In production**, pass the hosted database's connection string inline, for
+that one command only:
+
+```bash
+netlify database status --show-credentials   # copy the production connection string
+NETLIFY_DB_URL='<connection string>' npm run admin:create you@example.com
+```
+
+Production sign-in also needs `NUXT_SESSION_PASSWORD` set on Netlify; see
+[Deploying](#deploying).
 
 Then sign in at `/admin/login`. Further admins can be added at `/admin/users`.
 There is no emailed password reset.
@@ -130,9 +140,8 @@ slug that already exists, so it never overwrites edits made in `/admin`.
 
 ## Deploying
 
-Not yet set up: this repository has no Netlify site, database or git remote.
-Once a site exists, deploy preview-first so a failure never leaves production
-half-configured:
+The folder is linked to the Netlify site `swvh-nuxt`. Deploy preview-first so a
+failure never leaves production half-configured:
 
 ```bash
 netlify deploy          # provisions the DB, applies migrations, gives a draft URL
@@ -140,12 +149,20 @@ netlify deploy          # provisions the DB, applies migrations, gives a draft U
 netlify deploy --prod
 ```
 
+The admin can't sign in until the session secret is set on Netlify. Set it
+once, with a different value from the one in your local `.env`, then redeploy
+so the functions pick it up:
+
+```bash
+netlify env:set NUXT_SESSION_PASSWORD "$(openssl rand -hex 32)" --context production
+```
+
 Environment variables:
 
 | Name | Purpose |
 | --- | --- |
 | `NUXT_SESSION_PASSWORD` | Encrypts the admin session cookie. Required, 32+ characters. |
-| `NETLIFY_DB_URL` | Injected by Netlify and by `netlify dev`. Never set by hand in production. |
+| `NETLIFY_DB_URL` | Injected by Netlify and by `netlify dev`. Never set it in Netlify's environment variables or in `.env`; pass it inline only to point `admin:create` at production. |
 
 ## Differences from the Rails app
 

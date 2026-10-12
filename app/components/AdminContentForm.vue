@@ -25,6 +25,7 @@ const form = reactive({
   position: 0,
   draft: false,
   heroImagePath: '',
+  heroImageKey: '',
   heroImageAlt: '',
   sourceUrl: '',
   // Activities only.
@@ -62,6 +63,50 @@ const inputClass
 const labelClass = 'text-sm font-bold'
 const hintClass = 'mt-1 text-xs text-stone-500 dark:text-stone-400'
 
+const uploading = ref(false)
+const uploadError = ref<string | null>(null)
+const fileInput = ref<HTMLInputElement | null>(null)
+
+async function uploadHeroImage(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+
+  // Checked here as well as on the server: Netlify rejects a request body over
+  // 6 MB before it reaches the upload handler, so the server can't explain why.
+  if (file.size > 5 * 1024 * 1024) {
+    uploadError.value = 'Images must be 5 MB or smaller.'
+    if (fileInput.value) fileInput.value.value = ''
+    return
+  }
+
+  uploading.value = true
+  uploadError.value = null
+
+  const body = new FormData()
+  body.append('file', file)
+
+  try {
+    const { key, url } = await $fetch('/api/admin/uploads/hero-image', { method: 'POST', body })
+    form.heroImageKey = key
+    form.heroImagePath = url
+  }
+  catch (requestError) {
+    uploadError.value
+      = (requestError as { statusMessage?: string }).statusMessage ?? 'Could not upload that image.'
+  }
+  finally {
+    uploading.value = false
+    // Allow picking the same file again after an error.
+    if (fileInput.value) fileInput.value.value = ''
+  }
+}
+
+/** Takes effect on save, which is also when the old upload is cleaned up. */
+function removeHeroImage() {
+  form.heroImageKey = ''
+  form.heroImagePath = ''
+}
+
 async function save() {
   submitting.value = true
   error.value = null
@@ -74,6 +119,7 @@ async function save() {
     position: Number(form.position) || 0,
     draft: form.draft,
     heroImagePath: form.heroImagePath,
+    heroImageKey: form.heroImageKey,
     heroImageAlt: form.heroImageAlt,
     sourceUrl: form.sourceUrl,
   }
@@ -224,25 +270,51 @@ async function save() {
         <legend class="px-1 text-sm font-semibold">
           Image
         </legend>
-        <div v-if="form.heroImagePath" class="flex items-center gap-4">
-          <img :src="form.heroImagePath" alt="" class="h-20 w-32 rounded object-cover">
-          <p class="text-sm text-stone-600 dark:text-stone-400">
-            {{ form.heroImagePath }}
-          </p>
-        </div>
-        <div>
-          <label for="heroImagePath" :class="labelClass">Image path</label>
-          <input
-            id="heroImagePath"
-            v-model="form.heroImagePath"
-            type="text"
-            :placeholder="`/images/${kind}/example.jpg`"
-            :class="inputClass"
+        <img
+          v-if="form.heroImagePath"
+          :src="form.heroImagePath"
+          :alt="form.heroImageAlt || 'Image preview'"
+          class="max-h-64 w-full rounded-md border border-stone-200 object-cover dark:border-stone-800"
+        >
+        <p
+          v-else
+          class="rounded-md border border-dashed border-stone-300 px-4 py-6 text-center text-sm text-stone-500 dark:border-stone-700 dark:text-stone-400"
+        >
+          No image yet.
+        </p>
+
+        <div class="flex flex-wrap items-center gap-4">
+          <label
+            for="heroImageFile"
+            class="w-fit cursor-pointer rounded-md border border-stone-300 px-4 py-2 text-sm font-semibold hover:border-teal-700 hover:text-teal-700 dark:border-stone-700 dark:hover:text-teal-300"
+            :class="{ 'pointer-events-none opacity-60': uploading }"
           >
-          <p :class="hintClass">
-            A file under <code>public/images</code> in the repository. Uploading from here isn't supported yet.
-          </p>
+            {{ uploading ? 'Uploading…' : form.heroImagePath ? 'Replace image' : 'Upload image' }}
+          </label>
+          <input
+            id="heroImageFile"
+            ref="fileInput"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+            class="sr-only"
+            :disabled="uploading"
+            @change="uploadHeroImage"
+          >
+          <button
+            v-if="form.heroImagePath"
+            type="button"
+            class="cursor-pointer text-sm font-semibold text-red-700 hover:underline dark:text-red-300"
+            @click="removeHeroImage"
+          >
+            Remove image
+          </button>
+          <span class="text-xs text-stone-500 dark:text-stone-400">JPEG, PNG, WebP, GIF or AVIF, up to 5 MB.</span>
         </div>
+
+        <p v-if="uploadError" role="alert" class="text-sm font-semibold text-red-700 dark:text-red-300">
+          {{ uploadError }}
+        </p>
+
         <div>
           <label for="heroImageAlt" :class="labelClass">Alt text</label>
           <input
@@ -270,7 +342,7 @@ async function save() {
       <div class="flex items-center gap-4">
         <button
           type="submit"
-          :disabled="submitting"
+          :disabled="submitting || uploading"
           class="w-fit cursor-pointer rounded-md bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {{ submitting ? 'Saving…' : `Save ${singular.toLowerCase()}` }}

@@ -53,6 +53,8 @@ const sharedFields = {
   body: z.string().refine(value => value.trim().length > 0, 'Body can\'t be blank'),
   description: optionalText,
   heroImagePath: optionalText,
+  /** An uploaded image's Netlify Blobs key, from `POST /api/admin/uploads/hero-image`. */
+  heroImageKey: optionalText.refine(key => key === null || isHeroImageKey(key), 'Image upload is not recognised'),
   heroImageAlt: optionalText,
   sourceUrl: optionalText,
   draft: z.boolean().optional().default(false),
@@ -150,7 +152,12 @@ export async function parseAdminInput(kind: AdminKind, body: unknown, id?: numbe
     throw createError({ statusCode: 422, statusMessage: 'Slug has already been taken' })
   }
 
-  return { ...parsed.data, slug }
+  // A record with an uploaded image always points `heroImagePath` at it, so the
+  // public pages read one field whichever way the image arrived.
+  const { heroImageKey } = parsed.data
+  const heroImagePath = heroImageKey ? heroImageUrlForKey(heroImageKey) : parsed.data.heroImagePath
+
+  return { ...parsed.data, slug, heroImagePath }
 }
 
 async function slugTaken(kind: AdminKind, slug: string, id?: number): Promise<boolean> {
@@ -181,20 +188,28 @@ export async function createContent(kind: AdminKind, values: ActivityInput | Pag
 export async function updateContent(kind: AdminKind, id: number, values: ActivityInput | PageInput) {
   const db = useDb()
   const updatedAt = new Date()
+  const t = kind === 'activities' ? tables.activities : tables.pages
+
+  const [previous] = await db.select({ heroImageKey: t.heroImageKey }).from(t).where(eq(t.id, id)).limit(1)
 
   if (kind === 'activities') {
     await db
       .update(tables.activities)
       .set({ ...(values as ActivityInput), updatedAt })
       .where(eq(tables.activities.id, id))
-    return
+  }
+  else {
+    await db.update(tables.pages).set({ ...(values as PageInput), updatedAt }).where(eq(tables.pages.id, id))
   }
 
-  await db.update(tables.pages).set({ ...(values as PageInput), updatedAt }).where(eq(tables.pages.id, id))
+  // Replaced or removed: the old upload is no longer referenced.
+  if (previous?.heroImageKey && previous.heroImageKey !== values.heroImageKey) {
+    await deleteHeroImage(previous.heroImageKey)
+  }
 }
 
 export async function deleteContent(kind: AdminKind, id: number) {
-  const db = useDb()
-  if (kind === 'activities') await db.delete(tables.activities).where(eq(tables.activities.id, id))
-  else await db.delete(tables.pages).where(eq(tables.pages.id, id))
+  const t = kind === 'activities' ? tables.activities : tables.pages
+  const [deleted] = await useDb().delete(t).where(eq(t.id, id)).returning({ heroImageKey: t.heroImageKey })
+  await deleteHeroImage(deleted?.heroImageKey)
 }

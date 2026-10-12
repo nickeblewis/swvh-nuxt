@@ -16,8 +16,9 @@ import {
  * The data model, a table-for-table translation of the Rails `db/schema.rb`.
  *
  * Deliberate differences from Rails:
- *   - Active Storage is not ported. Hero images are a `hero_image_path` into
- *     `public/images` plus alt text; there are no uploads yet.
+ *   - Active Storage is not ported. A hero image is uploaded to Netlify Blobs
+ *     and recorded as `hero_image_key`; `hero_image_path` is the URL the site
+ *     shows, either that upload's or a seeded file under `public/images`.
  *   - Devise's reset/remember columns are omitted, and `encrypted_password`
  *     becomes `password_hash` (scrypt, from `nuxt-auth-utils`).
  *   - The Solid Queue/Cache/Cable tables have no equivalent here.
@@ -51,6 +52,7 @@ export const activities = pgTable('activities', {
   phone: text('phone'),
   externalUrl: text('external_url'),
   heroImagePath: text('hero_image_path'),
+  heroImageKey: text('hero_image_key'),
   heroImageAlt: text('hero_image_alt'),
   sourceUrl: text('source_url'),
   sourceUpdatedOn: date('source_updated_on', { mode: 'string' }),
@@ -76,6 +78,7 @@ export const pages = pgTable('pages', {
   template: text('template').notNull().default('standard'),
   description: text('description'),
   heroImagePath: text('hero_image_path'),
+  heroImageKey: text('hero_image_key'),
   heroImageAlt: text('hero_image_alt'),
   sourceUrl: text('source_url'),
   draft: boolean('draft').notNull().default(false),

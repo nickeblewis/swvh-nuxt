@@ -14,7 +14,8 @@ repair cafe, hall information and hire. A Nuxt port of the Rails app
 | Articles | Markdown in `content/articles/` | In the repository |
 | Spaces (home page chips) | `spaces` table | By migration |
 | Site identity: name, email, address, charity number | `runtimeConfig.public.site` in `nuxt.config.ts` | In the code; read it with `useSite()`, never hard-code it |
-| Images | `public/images/` | In the repository |
+| Activity and page images | Netlify Blobs, store `hero-images` | Uploaded in `/admin` |
+| Other images | `public/images/` | In the repository |
 
 An admin-created page can't use a slug the site already routes; the list is
 `RESERVED_PAGE_SLUGS` in `server/utils/admin-content.ts`. A page with the
@@ -119,6 +120,35 @@ Production sign-in also needs `NUXT_SESSION_PASSWORD` set on Netlify; see
 Then sign in at `/admin/login`. Further admins can be added at `/admin/users`.
 There is no emailed password reset.
 
+## Activity and page images
+
+An image is uploaded from the activity or page form (JPEG, PNG, WebP, GIF or
+AVIF, up to 5 MB). It is stored in the Netlify Blobs store `hero-images` under
+a random key, recorded on the row as `hero_image_key`, and served from
+`/images/uploads/<key>`. `hero_image_path` holds that URL, and is the one field
+the public pages read.
+
+`netlify dev` keeps blobs in a local sandbox, so images uploaded locally never
+reach production, and the other way round.
+
+### Moving the seeded images to the blob store
+
+The activities were seeded pointing at files in `public/images/activities/`.
+To move those into the blob store on production, once the upload feature is
+deployed there:
+
+```bash
+netlify database status --show-credentials   # copy the production connection string
+NETLIFY_DB_URL='<connection string>' npm run images:migrate                 # dry run
+NETLIFY_AUTH_TOKEN='<token>' NETLIFY_DB_URL='<connection string>' \
+  npm run images:migrate -- --apply
+```
+
+`NETLIFY_AUTH_TOKEN` is a Netlify personal access token (User settings >
+Applications). The script skips rows that already have an upload, so it is safe
+to run again. The files stay in `public/images/activities/`: the seed migration
+still points a fresh local database at them.
+
 ## Changing the schema
 
 ```bash
@@ -169,8 +199,8 @@ Environment variables:
 - **Seeding.** Rails re-imported `content/activities/*.md` on every boot,
   overwriting admin edits. Here the activities are seeded once by migration and
   the database is the source of truth.
-- **Images.** No uploads yet. Activities and pages take a path under
-  `public/images`; Active Storage is not ported.
+- **Images.** Active Storage is not ported. Activity and page images are
+  uploaded in the admin to Netlify Blobs and served from `/images/uploads/`.
 - **Contact form.** Netlify Forms, not Resend.
 - **Admin.** Signs in at `/admin/login`. No emailed password reset; an admin
   sets passwords at `/admin/users` or with the script. The lists have a Delete
@@ -188,7 +218,9 @@ Environment variables:
 | Command | What it does |
 | --- | --- |
 | `netlify dev` | Run the site with its local database |
-| `npm test` | Unit tests (the schedule logic) |
+| `npm test` | Unit tests |
+| `npm run admin:create <email>` | Create an admin user or reset a password |
+| `npm run images:migrate` | One-off: move seeded images into the blob store |
 | `npm run typecheck` | Type-check the app and server |
 | `npm run build` | Production build |
 | `npm run db:generate` | Write a migration from `db/schema.ts` |
